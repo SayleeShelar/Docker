@@ -289,14 +289,40 @@ docker tag myapp myapp:latest    # Add tag to existing image
 
 ## 📝 Dockerfile Basics
 
-**Simple Example:**
+### How to Write a Dockerfile (Simple Template)
+
+**Don't worry about remembering everything! Follow this simple pattern:**
+
 ```dockerfile
-FROM nginx:alpine                # Start with nginx
-COPY index.html /usr/share/nginx/html/  # Copy your file
-EXPOSE 80                        # Document port
+# 1. Start with a base image
+FROM <base-image>:<tag>
+
+# 2. Set working directory (optional but recommended)
+WORKDIR /app
+
+# 3. Copy dependency files first (for caching)
+COPY package*.json ./           # For Node.js
+COPY requirements.txt ./         # For Python
+COPY pom.xml ./                  # For Java
+
+# 4. Install dependencies
+RUN npm install                  # For Node.js
+RUN pip install -r requirements.txt  # For Python
+RUN mvn install                  # For Java
+
+# 5. Copy your application code
+COPY . .
+
+# 6. Expose the port your app uses
+EXPOSE <port-number>
+
+# 7. Define how to start your app
+CMD ["command", "to", "start", "app"]
 ```
 
-**Node.js Example:**
+**Quick Examples by Language:**
+
+**Node.js:**
 ```dockerfile
 FROM node:18-alpine
 WORKDIR /app
@@ -305,6 +331,162 @@ RUN npm install
 COPY . .
 EXPOSE 3000
 CMD ["npm", "start"]
+```
+
+**Python:**
+```dockerfile
+FROM python:3.11-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+COPY . .
+EXPOSE 5000
+CMD ["python", "app.py"]
+```
+
+**Static Website (HTML/CSS/JS):**
+```dockerfile
+FROM nginx:alpine
+COPY . /usr/share/nginx/html
+EXPOSE 80
+```
+
+**Java (Spring Boot):**
+```dockerfile
+FROM openjdk:17-slim
+WORKDIR /app
+COPY target/*.jar app.jar
+EXPOSE 8080
+CMD ["java", "-jar", "app.jar"]
+```
+
+### All Dockerfile Instructions Explained
+
+```dockerfile
+# FROM - Base image (REQUIRED - must be first)
+FROM node:18-alpine              # Start with Node.js on Alpine Linux
+FROM ubuntu:22.04                # Or use Ubuntu
+FROM nginx:latest                # Or nginx
+
+# WORKDIR - Set working directory inside container
+WORKDIR /app                     # All commands run from /app
+WORKDIR /usr/src/app             # Creates directory if doesn't exist
+
+# COPY - Copy files from host to container (PREFERRED)
+COPY package.json /app/          # Copy single file
+COPY . .                         # Copy everything from current dir
+COPY src/ /app/src/              # Copy directory
+
+# ADD - Copy files with extra features (use only when needed)
+ADD https://example.com/file.tar.gz /app/  # Download from URL
+ADD archive.tar.gz /app/         # Auto-extracts tar/zip files
+
+# RUN - Execute commands during BUILD (creates layers)
+RUN apt-get update               # Update packages
+RUN npm install                  # Install dependencies
+RUN pip install -r requirements.txt
+RUN apt-get update && apt-get install -y curl  # Combine to reduce layers
+
+# CMD - Default command when container STARTS (only one)
+CMD ["npm", "start"]             # Start Node app
+CMD ["python", "app.py"]         # Run Python script
+CMD ["nginx", "-g", "daemon off;"]  # Start nginx
+
+# ENTRYPOINT - Main executable (not easily overridden)
+ENTRYPOINT ["python"]            # Always run python
+CMD ["app.py"]                   # Default argument (can override)
+
+# EXPOSE - Document which port app uses (doesn't publish)
+EXPOSE 3000                      # App listens on port 3000
+EXPOSE 80 443                    # Multiple ports
+
+# ENV - Set environment variables
+ENV NODE_ENV=production          # Set Node environment
+ENV PORT=3000                    # Set port variable
+ENV DB_HOST=localhost DB_PORT=5432  # Multiple variables
+
+# ARG - Build-time variables (only during build)
+ARG VERSION=1.0                  # Default value
+RUN echo "Building version $VERSION"
+
+# VOLUME - Create mount point for persistent data
+VOLUME ["/data"]                 # Data persists here
+VOLUME ["/var/log", "/var/db"]   # Multiple volumes
+
+# USER - Set user for running commands
+USER node                        # Run as 'node' user (not root)
+USER 1001                        # Or use UID
+
+# LABEL - Add metadata to image
+LABEL version="1.0"              # Version info
+LABEL description="My app"       # Description
+```
+
+### COPY vs ADD
+
+| Feature | COPY | ADD |
+|---------|------|-----|
+| **Basic copying** | ✅ Yes | ✅ Yes |
+| **Copy from URL** | ❌ No | ✅ Yes |
+| **Auto-extract tar** | ❌ No | ✅ Yes |
+| **Best practice** | ✅ Preferred | ⚠️ Use only when needed |
+
+```dockerfile
+# COPY - Simple and predictable (USE THIS)
+COPY index.html /app/
+COPY package*.json ./
+
+# ADD - Has extra features
+ADD https://example.com/file.tar.gz /app/  # Downloads from URL
+ADD archive.tar.gz /app/                   # Auto-extracts tar files
+```
+
+**Rule:** Use COPY unless you need ADD's special features.
+
+### RUN vs CMD
+
+| Feature | RUN | CMD |
+|---------|-----|-----|
+| **When executed** | During image build | When container starts |
+| **Purpose** | Install/setup | Start application |
+| **Can have multiple** | ✅ Yes | ❌ No (last one wins) |
+| **Can override** | ❌ No | ✅ Yes (with docker run) |
+
+```dockerfile
+# RUN - Executes during BUILD (creates layers)
+RUN apt-get update
+RUN npm install
+RUN pip install -r requirements.txt
+
+# CMD - Executes when CONTAINER STARTS (only one CMD)
+CMD ["npm", "start"]           # Starts your app
+CMD ["python", "app.py"]       # Runs Python script
+CMD ["nginx", "-g", "daemon off;"]  # Starts nginx
+```
+
+**Simple Rule:**
+- **RUN** = Build time (install stuff)
+- **CMD** = Runtime (start app)
+
+### Complete Dockerfile Example
+
+**Simple Example:**
+```dockerfile
+FROM nginx:alpine                # Start with nginx
+COPY index.html /usr/share/nginx/html/  # Copy your file
+EXPOSE 80                        # Document port
+CMD ["nginx", "-g", "daemon off;"]  # Start nginx
+```
+
+**Node.js Example:**
+```dockerfile
+FROM node:18-alpine              # Base image
+WORKDIR /app                     # Set working directory
+COPY package*.json ./            # Copy package files
+RUN npm install                  # Install dependencies (BUILD TIME)
+COPY . .                         # Copy source code
+EXPOSE 3000                      # Document port
+CMD ["npm", "start"]             # Start app (RUN TIME)
 ```
 
 **Build & Run:**
