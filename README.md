@@ -87,8 +87,6 @@ docker run -d -p 8080:80 nginx
 
 ---
 
-## 🎯 The Docker Workflow (Start Here!)
-
 ## 📊 Docker Lifecycle Flowcharts
 
 ### Flow 1: Dockerfile → Image → Container
