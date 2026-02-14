@@ -42,9 +42,11 @@ docker tag <image> <new-name>    # Tag image
 ```bash
 docker run <image>               # Create and start container
 docker run -d <image>            # Run in detached mode
+docker run -d --name nc nginx    # Run with custom name
+docker run -d --rm --name nc nginx  # Run with auto-remove on stop
+docker run -d --rm --name nc -p 8080:80 nginx  # With port binding
 docker run -p 8080:80 <image>    # Port mapping (host:container)
 docker run -v /host:/container   # Volume mount
-docker run --name <name> <image> # Name container
 docker run -it <image> /bin/bash # Interactive terminal
 
 docker ps                        # List running containers
@@ -52,9 +54,11 @@ docker ps -a                     # List all containers
 docker start <container>         # Start stopped container
 docker stop <container>          # Stop container
 docker restart <container>       # Restart container
-docker rm <container>            # Remove container
+docker rm <container>            # Remove stopped container
+docker rm -f <container>         # Forcefully remove container
 docker exec -it <container> bash # Execute command in running container
 docker logs <container>          # View logs
+docker logs -f <container>       # View live logs (follow)
 docker inspect <container>       # Detailed info
 ```
 
@@ -145,17 +149,27 @@ volumes:
 9. **Keep images small** - Use alpine variants
 10. **Cache dependencies** - Copy package files before source code
 
+## Container Status Meanings
+
+- **Up** - Container is running
+- **Exited** - Container stopped (check logs to see why)
+- **Created** - Container created but not started
+- **Restarting** - Container is restarting
+- **Paused** - Container is paused
+- **Dead** - Container is dead (non-recoverable state)
+
 ## Common Flags
 
-- `-d` - Detached mode
+- `-d` - Detached mode (run in background)
 - `-it` - Interactive terminal
-- `-p` - Port mapping
+- `-p` - Port mapping (host:container)
 - `-v` - Volume mount
 - `--name` - Container name
-- `--rm` - Auto-remove on stop
+- `--rm` - Auto-remove container on stop
 - `-e` - Environment variable
 - `--network` - Network connection
 - `--restart` - Restart policy
+- `-f` - Follow/force (for logs/remove)
 
 ## Quick Reference
 
