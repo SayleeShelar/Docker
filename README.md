@@ -89,6 +89,71 @@ docker run -d -p 8080:80 nginx
 
 ## 🎯 The Docker Workflow (Start Here!)
 
+## 📊 Docker Lifecycle Flowcharts
+
+### Flow 1: Dockerfile → Image → Container
+
+```
+Dockerfile (recipe)  →  docker build  →  Image (template)  →  docker run  →  Container (running app)
+     📄                      🔨                  📦                   ▶️              🚀
+```
+
+**Detailed Flow:**
+```
+1. Write Dockerfile
+        ↓
+2. docker build -t myapp .
+        ↓
+3. Image created (myapp)
+        ↓
+4. docker run -d -p 8080:80 myapp
+        ↓
+5. Container running!
+```
+
+### Flow 2: Complete Docker Workflow
+
+```
+┌─────────────┐
+│  Dockerfile │  (You write this)
+└──────┬──────┘
+       │
+       │ docker build -t myapp .
+       ↓
+┌─────────────┐
+│    Image    │  (Template/Blueprint)
+└──────┬──────┘
+       │
+       │ docker run -d -p 8080:80 --name app myapp
+       ↓
+┌─────────────┐
+│  Container  │  (Running application)
+└──────┬──────┘
+       │
+       ├→ docker logs app      (View logs)
+       ├→ docker exec -it app bash  (Get inside)
+       ├→ docker stop app     (Stop it)
+       └→ docker rm app       (Remove it)
+```
+
+### Flow 3: Image Sources
+
+```
+Option 1: Docker Hub          Option 2: Build Your Own
+       ↓                              ↓
+  docker pull nginx            docker build -t myapp .
+       ↓                              ↓
+   Image (nginx)                 Image (myapp)
+       ↓                              ↓
+  docker run nginx             docker run myapp
+       ↓                              ↓
+   Container                      Container
+```
+
+---
+
+## 🎯 The Docker Workflow (Start Here!)
+
 ### Step 1: Get an Image
 ```bash
 docker pull nginx                # Download nginx from Docker Hub
