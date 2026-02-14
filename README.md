@@ -42,9 +42,9 @@ docker tag <image> <new-name>    # Tag image
 ```bash
 docker run <image>               # Create and start container
 docker run -d <image>            # Run in detached mode
-docker run -d --name nc nginx    # Run with custom name
-docker run -d --rm --name nc nginx  # Run with auto-remove on stop
-docker run -d --rm --name nc -p 8080:80 nginx  # With port binding
+docker run -d --name nc <image>  # Run with custom name (e.g., nginx)
+docker run -d --rm --name nc <image>  # Run with auto-remove on stop
+docker run -d -p 8080:80 --name nc <image>  # With port binding
 docker run -p 8080:80 <image>    # Port mapping (host:container)
 docker run -v /host:/container   # Volume mount
 docker run -it <image> /bin/bash # Interactive terminal
@@ -57,7 +57,7 @@ docker restart <container>       # Restart container
 docker rm <container>            # Remove stopped container
 docker rm -f <container>         # Forcefully remove container
 docker exec -it <container> bash # Execute command in running container
-docker logs <container>          # View logs
+docker logs <container>          # View logs (e.g., docker logs nc)
 docker logs -f <container>       # View live logs (follow)
 docker inspect <container>       # Detailed info
 ```
