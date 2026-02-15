@@ -871,6 +871,93 @@ docker-compose down
 
 ---
 
+## 🧪 Practical Example: Node.js + MongoDB + Mongo Express
+
+### Complete Working Project
+
+I've created a full working example in the `node-mongo-app/` folder that demonstrates:
+
+1. **MongoDB & Mongo Express running in Docker** (inside Docker network)
+2. **Node.js app running locally on your computer** (outside Docker)
+3. **How Node.js (outside) connects to MongoDB (inside Docker)**
+4. **Browser accessing all services**
+5. **How Docker Compose simplifies everything**
+
+### Project Structure:
+```
+node-mongo-app/
+├── docker-compose.yml    # Defines MongoDB and Mongo Express only
+├── package.json          # Node.js dependencies
+├── server.js             # Node.js app (runs locally)
+└── README.md             # Detailed instructions
+```
+
+### Quick Start:
+
+```bash
+# Navigate to the example
+cd node-mongo-app
+
+# Start MongoDB and Mongo Express with Docker Compose
+docker-compose up -d
+
+# Install Node.js dependencies
+npm install
+
+# Run Node.js app locally (outside Docker)
+node server.js
+
+# Access the services:
+# - Node.js App: http://localhost:3000 (running on your computer)
+# - Mongo Express: http://localhost:8081 (admin/pass) (running in Docker)
+
+# Stop Docker services
+docker-compose down
+```
+
+### What You'll Learn:
+
+✅ How **Node.js (outside Docker)** connects to **MongoDB (inside Docker)** using `localhost:27017`  
+✅ How **port binding** creates a bridge between your computer and Docker containers  
+✅ How containers **inside Docker network** communicate using container names  
+✅ How **browser** accesses both local app and Docker services  
+✅ How **Docker Compose** creates network automatically  
+✅ Complete CRUD operations with MongoDB  
+
+### Network Diagram:
+
+```
+┌─────────────────────────────────────────┐
+│         Your Computer (Outside)         │
+│                                         │
+│         ┌──────────────┐               │
+│         │   Browser    │               │
+│         └──────┬───────┘               │
+│                │                        │
+│                │ Port Binding           │
+│                │ (3000, 8081)           │
+└────────────────┼─────────────────────────┘
+                 │
+                 ↓
+┌─────────────────────────────────────────┐
+│    Docker Network (mongo-network)      │
+│    Created by Docker Compose!          │
+│                                         │
+│  ┌──────────┐  ┌──────────┐  ┌──────┐ │
+│  │ Node.js  │→ │  mongo-  │→ │mongo │ │
+│  │  (local) │  │ express  │  │:27017│ │
+│  │          │  │  :8081   │  └──────┘ │
+│  └──────────┘  └──────────┘            │
+└─────────────────────────────────────────┘
+     ↑
+     │ Connects via localhost:27017
+     │ (Port binding makes this possible)
+```
+
+**See `node-mongo-app/README.md` for complete step-by-step instructions!**
+
+---
+
 ## 💡 Pro Tips
 
 1. **Always name your containers** - Easier than using IDs
