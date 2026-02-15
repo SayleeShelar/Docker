@@ -403,62 +403,78 @@ EXPOSE 80                      # 6. Port
 
 ### All Dockerfile Instructions Explained
 
+**FROM** - Base image (REQUIRED - must be first)
 ```dockerfile
-# FROM - Base image (REQUIRED - must be first)
 FROM node:18-alpine              # Start with Node.js on Alpine Linux
 FROM ubuntu:22.04                # Or use Ubuntu
-FROM nginx:latest                # Or nginx
+```
 
-# WORKDIR - Set working directory inside container
+**WORKDIR** - Set working directory inside container
+```dockerfile
 WORKDIR /app                     # All commands run from /app
-WORKDIR /usr/src/app             # Creates directory if doesn't exist
+```
 
-# COPY - Copy files from host to container (PREFERRED)
+**COPY** - Copy files from host to container (PREFERRED)
+```dockerfile
 COPY package.json /app/          # Copy single file
 COPY . .                         # Copy everything from current dir
-COPY src/ /app/src/              # Copy directory
+```
 
-# ADD - Copy files with extra features (use only when needed)
+**ADD** - Copy files with extra features (use only when needed)
+```dockerfile
 ADD https://example.com/file.tar.gz /app/  # Download from URL
 ADD archive.tar.gz /app/         # Auto-extracts tar/zip files
+```
 
-# RUN - Execute commands during BUILD (creates layers)
+**RUN** - Execute commands during BUILD (creates layers)
+```dockerfile
 RUN apt-get update               # Update packages
 RUN npm install                  # Install dependencies
-RUN pip install -r requirements.txt
 RUN apt-get update && apt-get install -y curl  # Combine to reduce layers
+```
 
-# CMD - Default command when container STARTS (only one)
+**CMD** - Default command when container STARTS (only one)
+```dockerfile
 CMD ["npm", "start"]             # Start Node app
 CMD ["python", "app.py"]         # Run Python script
-CMD ["nginx", "-g", "daemon off;"]  # Start nginx
+```
 
-# ENTRYPOINT - Main executable (not easily overridden)
+**ENTRYPOINT** - Main executable (not easily overridden)
+```dockerfile
 ENTRYPOINT ["python"]            # Always run python
 CMD ["app.py"]                   # Default argument (can override)
+```
 
-# EXPOSE - Document which port app uses (doesn't publish)
+**EXPOSE** - Document which port app uses (doesn't publish)
+```dockerfile
 EXPOSE 3000                      # App listens on port 3000
 EXPOSE 80 443                    # Multiple ports
+```
 
-# ENV - Set environment variables
+**ENV** - Set environment variables
+```dockerfile
 ENV NODE_ENV=production          # Set Node environment
 ENV PORT=3000                    # Set port variable
-ENV DB_HOST=localhost DB_PORT=5432  # Multiple variables
+```
 
-# ARG - Build-time variables (only during build)
+**ARG** - Build-time variables (only during build)
+```dockerfile
 ARG VERSION=1.0                  # Default value
 RUN echo "Building version $VERSION"
+```
 
-# VOLUME - Create mount point for persistent data
+**VOLUME** - Create mount point for persistent data
+```dockerfile
 VOLUME ["/data"]                 # Data persists here
-VOLUME ["/var/log", "/var/db"]   # Multiple volumes
+```
 
-# USER - Set user for running commands
+**USER** - Set user for running commands
+```dockerfile
 USER node                        # Run as 'node' user (not root)
-USER 1001                        # Or use UID
+```
 
-# LABEL - Add metadata to image
+**LABEL** - Add metadata to image
+```dockerfile
 LABEL version="1.0"              # Version info
 LABEL description="My app"       # Description
 ```
