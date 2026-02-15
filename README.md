@@ -368,75 +368,37 @@ CMD ["npm", "start"]
 
 **That's it! Just answer these 7 questions for ANY language!**
 
-### How to Write a Dockerfile (Simple Template)
-
-**Don't worry about remembering everything! Follow this simple pattern:**
-
-```dockerfile
-# 1. Start with a base image
-FROM <base-image>:<tag>
-
-# 2. Set working directory (optional but recommended)
-WORKDIR /app
-
-# 3. Copy dependency files first (for caching)
-COPY package*.json ./           # For Node.js
-COPY requirements.txt ./         # For Python
-COPY pom.xml ./                  # For Java
-
-# 4. Install dependencies
-RUN npm install                  # For Node.js
-RUN pip install -r requirements.txt  # For Python
-RUN mvn install                  # For Java
-
-# 5. Copy your application code
-COPY . .
-
-# 6. Expose the port your app uses
-EXPOSE <port-number>
-
-# 7. Define how to start your app
-CMD ["command", "to", "start", "app"]
-```
-
-**Quick Examples by Language:**
-
-**Node.js:**
-```dockerfile
-FROM node:18-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm install
-COPY . .
-EXPOSE 3000
-CMD ["npm", "start"]
-```
+### How to Write Dockerfile for Different Languages
 
 **Python:**
 ```dockerfile
-FROM python:3.11-slim
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-COPY . .
-EXPOSE 5000
-CMD ["python", "app.py"]
-```
-
-**Static Website (HTML/CSS/JS):**
-```dockerfile
-FROM nginx:alpine
-COPY . /usr/share/nginx/html
-EXPOSE 80
+FROM python:3.11-slim          # 1. Python
+WORKDIR /app                    # 2. Work in /app
+COPY requirements.txt .         # 3. Dependencies file
+RUN pip install -r requirements.txt  # 4. Install
+COPY . .                        # 5. Copy code
+EXPOSE 5000                     # 6. Port
+CMD ["python", "app.py"]       # 7. Start
 ```
 
 **Java (Spring Boot):**
 ```dockerfile
-FROM openjdk:17-slim
-WORKDIR /app
-COPY target/*.jar app.jar
-EXPOSE 8080
-CMD ["java", "-jar", "app.jar"]
+FROM openjdk:17-slim           # 1. Java
+WORKDIR /app                    # 2. Work in /app
+COPY target/*.jar app.jar       # 3. JAR file
+# No RUN needed (JAR is ready)  # 4. Skip
+# No COPY needed (JAR has code)  # 5. Skip
+EXPOSE 8080                     # 6. Port
+CMD ["java", "-jar", "app.jar"]  # 7. Start
+```
+
+**Static Website:**
+```dockerfile
+FROM nginx:alpine              # 1. Nginx
+# No WORKDIR needed             # 2. Skip
+COPY . /usr/share/nginx/html   # 3-5. Copy everything
+EXPOSE 80                      # 6. Port
+# CMD already in nginx image    # 7. Skip
 ```
 
 ### All Dockerfile Instructions Explained
@@ -547,32 +509,172 @@ CMD ["nginx", "-g", "daemon off;"]  # Starts nginx
 - **RUN** = Build time (install stuff)
 - **CMD** = Runtime (start app)
 
-### Complete Dockerfile Example
+---
 
-**Simple Example:**
-```dockerfile
-FROM nginx:alpine                # Start with nginx
-COPY index.html /usr/share/nginx/html/  # Copy your file
-EXPOSE 80                        # Document port
-CMD ["nginx", "-g", "daemon off;"]  # Start nginx
+## 🔄 Docker Compose (Multi-Container Apps)
+
+### 🎯 Easy Trick to Write Docker Compose (No Memorization!)
+
+**Think of it as answering these questions for EACH service:**
+
+1. **What's the service name?** → `service-name:`
+2. **What image?** → `image:` or `build:`
+3. **What ports?** → `ports:`
+4. **What config?** → `environment:`
+5. **Save data?** → `volumes:`
+6. **Depends on?** → `depends_on:`
+
+**Example: MySQL Database**
+
+```yaml
+version: '3.8'
+
+services:
+  mysql:                        # 1. Service name
+    image: mysql:8.0            # 2. MySQL image
+    ports:
+      - "3306:3306"             # 3. Port
+    environment:                # 4. Config
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: mydb
+    volumes:                    # 5. Save data
+      - mysql-data:/var/lib/mysql
+    # No depends_on (it's first)  # 6. Skip
+
+volumes:
+  mysql-data:                   # Define volume
 ```
 
-**Node.js Example:**
-```dockerfile
-FROM node:18-alpine              # Base image
-WORKDIR /app                     # Set working directory
-COPY package*.json ./            # Copy package files
-RUN npm install                  # Install dependencies (BUILD TIME)
-COPY . .                         # Copy source code
-EXPOSE 3000                      # Document port
-CMD ["npm", "start"]             # Start app (RUN TIME)
-```
+### Why Docker Compose?
 
-**Build & Run:**
+**Without Docker Compose (Manual way):**
 ```bash
-docker build -t myapp .
-docker run -d -p 3000:3000 --name app myapp
+# Create network
+docker network create app-network
+
+# Run database
+docker run -d -p 3306:3306 --network app-network --name db mysql
+
+# Run app
+docker run -d -p 3000:3000 --network app-network --name app myapp
 ```
+
+**Problems:**
+- Too many commands to remember
+- Easy to make mistakes
+- Hard to share with team
+- Must manually create network first!
+
+**With Docker Compose:**
+```bash
+docker-compose up -d
+```
+
+**Benefits:**
+✅ One command to start everything
+✅ Network created automatically
+✅ All config in one file
+✅ Easy to share and version control
+
+### Docker Compose Commands
+
+```bash
+# Start all services (creates network automatically!)
+docker-compose up -d
+
+# View running services
+docker-compose ps
+
+# View logs from all services
+docker-compose logs -f
+
+# View logs from specific service
+docker-compose logs -f mysql
+
+# Stop all services
+docker-compose down
+
+# Stop and remove volumes (deletes data)
+docker-compose down -v
+
+# Rebuild and start
+docker-compose up -d --build
+```
+
+**What happens when you run `docker-compose up`:**
+1. ✅ Creates network automatically (no `docker network create` needed!)
+2. ✅ Pulls/builds all images
+3. ✅ Creates volumes
+4. ✅ Starts containers in correct order (based on `depends_on`)
+5. ✅ Connects all containers to the same network
+
+---
+
+## 🐍 Practical Example: Python + MySQL
+
+### Real-World Scenario
+
+I've created a **simple example** in the `python-mysql-docker/` folder:
+
+**🐍 Part 1 (Outside Docker)**: Python script running on your computer  
+**🐳 Part 2 (Inside Docker)**: MySQL database running in Docker  
+
+### Why This Setup?
+
+**Real-world development workflow:**
+- You write code on your computer (fast, easy to debug)
+- You don't want to install databases (MySQL, PostgreSQL, MongoDB)
+- **Solution**: Run database in Docker, code runs locally!
+
+**Benefits:**
+✅ No installation mess  
+✅ Easy cleanup  
+✅ Multiple projects with different databases  
+✅ Team consistency  
+
+### Quick Start:
+
+```bash
+# Navigate to example
+cd python-mysql-docker
+
+# Start MySQL with Docker Compose
+docker-compose up -d
+
+# Install Python dependencies
+pip install -r requirements.txt
+
+# Run Python script (on your computer)
+python app.py
+
+# Stop MySQL
+docker-compose down
+```
+
+### What You'll Learn:
+
+✅ How **port binding** works (`-p 3306:3306`)  
+✅ Why Python uses `localhost:3306` to connect  
+✅ How **Docker Compose** simplifies everything  
+✅ How **volumes** persist data  
+✅ Real-world development workflow  
+
+### Architecture:
+
+```
+Your Computer (Outside)          Docker (Inside)
+┌────────────────────┐      ┌─────────────────┐
+│  Python Script      │      │  MySQL Database  │
+│  (app.py)           │──────│  Port: 3306      │
+│                    │      │                 │
+└────────────────────┘      └─────────────────┘
+         │                           ↑
+         └───────────────────────────┘
+              localhost:3306
+           (Port Binding)
+```
+
+**See `python-mysql-docker/README.md` for detailed explanation!**
 
 ---
 
@@ -648,365 +750,6 @@ netstat -ano | findstr :8080
 # Linux/Mac: Add sudo or add user to docker group
 sudo docker ps
 ```
-
----
-
-## 🔄 Docker Compose (Multi-Container Apps)
-
-### 🎯 Easy Trick to Write Docker Compose (No Memorization!)
-
-**Think of it as answering these questions for EACH service:**
-
-1. **What's the service name?** → `service-name:`
-2. **What image?** → `image:` or `build:`
-3. **What ports?** → `ports:`
-4. **What config?** → `environment:`
-5. **Save data?** → `volumes:`
-6. **Depends on?** → `depends_on:`
-
-**Example: MySQL Database**
-
-```yaml
-version: '3.8'
-
-services:
-  mysql:                        # 1. Service name
-    image: mysql:8.0            # 2. MySQL image
-    ports:
-      - "3306:3306"             # 3. Port
-    environment:                # 4. Config
-      MYSQL_ROOT_PASSWORD: password
-      MYSQL_DATABASE: mydb
-    volumes:                    # 5. Save data
-      - mysql-data:/var/lib/mysql
-    # No depends_on (it's first)  # 6. Skip
-
-volumes:
-  mysql-data:                   # Define volume
-```
-
-### The Problem: Running Multiple Containers Manually
-
-**Imagine you have a Node.js app that needs MongoDB and Mongo Express:**
-
-```bash
-# Step 1: Create network (MANUAL!)
-docker network create mongo-network
-
-# Step 2: Run MongoDB
-docker run -d \
-  -p 27017:27017 \
-  --network mongo-network \
-  --name mongo \
-  -e MONGO_INITDB_ROOT_USERNAME=admin \
-  -e MONGO_INITDB_ROOT_PASSWORD=password \
-  mongo
-
-# Step 3: Run Mongo Express
-docker run -d \
-  -p 8081:8081 \
-  --network mongo-network \
-  --name mongo-express \
-  -e ME_CONFIG_MONGODB_ADMINUSERNAME=admin \
-  -e ME_CONFIG_MONGODB_ADMINPASSWORD=password \
-  -e ME_CONFIG_MONGODB_SERVER=mongo \
-  mongo-express
-
-# Step 4: Run your Node.js app
-docker run -d \
-  -p 3000:3000 \
-  --network mongo-network \
-  --name node-app \
-  -e MONGO_URL=mongodb://admin:password@mongo:27017 \
-  my-node-app
-```
-
-**Problems:**
-- Too many commands to remember
-- Easy to make mistakes
-- Hard to share with team
-- Difficult to start/stop everything together
-- **Must manually create network first!**
-
-### The Solution: Docker Compose
-
-**Docker Compose lets you define all containers in ONE file!**
-
-**✨ No need to create network manually - Docker Compose does it automatically!**
-
-**docker-compose.yml:**
-```yaml
-version: '3.8'
-
-services:
-  # MongoDB Database
-  mongo:
-    image: mongo
-    ports:
-      - "27017:27017"
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: password
-    volumes:
-      - mongo-data:/data/db
-
-  # Mongo Express (Database UI)
-  mongo-express:
-    image: mongo-express
-    ports:
-      - "8081:8081"
-    environment:
-      ME_CONFIG_MONGODB_ADMINUSERNAME: admin
-      ME_CONFIG_MONGODB_ADMINPASSWORD: password
-      ME_CONFIG_MONGODB_SERVER: mongo
-    depends_on:
-      - mongo
-
-  # Your Node.js Application
-  node-app:
-    build: .
-    ports:
-      - "3000:3000"
-    environment:
-      MONGO_URL: mongodb://admin:password@mongo:27017/mydb
-    depends_on:
-      - mongo
-    volumes:
-      - .:/app
-      - /app/node_modules
-
-volumes:
-  mongo-data:
-
-# Network is created automatically by Docker Compose!
-# All services are connected to the same network by default
-networks:
-  default:
-    name: mongo-network
-```
-
-### How Containers Connect in Docker Network
-
-**Inside Docker Network:**
-```
-┌─────────────────────────────────────────┐
-│         Docker Network                  │
-│                                         │
-│  ┌──────────┐      ┌──────────────┐   │
-│  │  mongo   │◄─────│  node-app    │   │
-│  │  :27017  │      │  :3000       │   │
-│  └──────────┘      └──────────────┘   │
-│       ▲                                │
-│       │                                │
-│  ┌────┴─────────┐                     │
-│  │ mongo-express│                     │
-│  │    :8081     │                     │
-│  └──────────────┘                     │
-└─────────────────────────────────────────┘
-         │              │
-         │              │
-    Port Binding   Port Binding
-         │              │
-         ▼              ▼
-   localhost:8081  localhost:3000
-   (Your Browser)  (Your Browser)
-```
-
-**How Node.js App Connects to MongoDB:**
-
-```javascript
-// In your Node.js app
-const mongoose = require('mongoose');
-
-// Use container name 'mongo' instead of 'localhost'
-// Docker network resolves 'mongo' to the MongoDB container's IP
-const mongoURL = 'mongodb://admin:password@mongo:27017/mydb';
-
-mongoose.connect(mongoURL)
-  .then(() => console.log('Connected to MongoDB!'))
-  .catch(err => console.error('Connection failed:', err));
-```
-
-**Why use 'mongo' instead of 'localhost'?**
-- Inside Docker network, containers use **container names** to find each other
-- `mongo` = MongoDB container
-- `mongo-express` = Mongo Express container
-- Docker's internal DNS resolves these names to container IPs
-
-**From outside (your browser):**
-- Access Mongo Express: `http://localhost:8081`
-- Access Node.js app: `http://localhost:3000`
-- Port binding makes them accessible from your computer
-
-### Docker Compose Commands
-
-```bash
-# Start all services (creates network automatically!)
-docker-compose up -d
-
-# View running services
-docker-compose ps
-
-# View logs from all services
-docker-compose logs -f
-
-# View logs from specific service
-docker-compose logs -f node-app
-
-# Stop all services
-docker-compose down
-
-# Stop and remove volumes (deletes data)
-docker-compose down -v
-
-# Rebuild and start
-docker-compose up -d --build
-```
-
-**What happens when you run `docker-compose up`:**
-1. ✅ Creates network automatically (no `docker network create` needed!)
-2. ✅ Pulls/builds all images
-3. ✅ Creates volumes
-4. ✅ Starts containers in correct order (based on `depends_on`)
-5. ✅ Connects all containers to the same network
-
-### Benefits of Docker Compose
-
-✅ **One command** to start everything: `docker-compose up -d`
-✅ **Automatic networking** - containers can talk to each other
-✅ **Easy to share** - just share the `docker-compose.yml` file
-✅ **Version control** - track changes in git
-✅ **Environment variables** - manage configs easily
-✅ **Dependencies** - `depends_on` ensures correct startup order
-✅ **Volumes** - persist data even after containers stop
-
-### Complete Example: Node.js + MongoDB + Mongo Express
-
-**Project Structure:**
-```
-my-project/
-├── docker-compose.yml
-├── Dockerfile
-├── package.json
-├── server.js
-└── .dockerignore
-```
-
-**Dockerfile:**
-```dockerfile
-FROM node:18-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm install
-COPY . .
-EXPOSE 3000
-CMD ["npm", "start"]
-```
-
-**server.js:**
-```javascript
-const express = require('express');
-const mongoose = require('mongoose');
-
-const app = express();
-
-// Connect to MongoDB using container name
-mongoose.connect(process.env.MONGO_URL)
-  .then(() => console.log('Connected to MongoDB'))
-  .catch(err => console.error('MongoDB connection error:', err));
-
-app.get('/', (req, res) => {
-  res.send('Hello from Node.js + Docker!');
-});
-
-app.listen(3000, () => {
-  console.log('Server running on port 3000');
-});
-```
-
-**Start everything:**
-```bash
-docker-compose up -d
-```
-
-**Access:**
-- Node.js app: http://localhost:3000
-- Mongo Express: http://localhost:8081 (admin/pass)
-
-**Stop everything:**
-```bash
-docker-compose down
-```
-
-**That's it! No manual network creation, no long docker run commands!** 🎉
-
----
-
-## 🐍 Simple Example: Python + MySQL (Beginner-Friendly)
-
-### Super Simple Project to Understand Docker
-
-I've created an **easy-to-understand** example in the `python-mysql-docker/` folder:
-
-**🐍 Part 1 (Outside Docker)**: Python script running on your computer  
-**🐳 Part 2 (Inside Docker)**: MySQL database running in Docker  
-
-### Why This Example?
-
-**Real-world scenario:**
-- You write code on your computer
-- You don't want to install databases
-- **Solution**: Run database in Docker, code runs locally!
-
-**Benefits:**
-✅ No installation mess  
-✅ Easy cleanup  
-✅ Multiple projects with different databases  
-✅ Team consistency  
-
-### Quick Start:
-
-```bash
-# Navigate to example
-cd python-mysql-docker
-
-# Start MySQL with Docker Compose
-docker-compose up -d
-
-# Install Python dependencies
-pip install -r requirements.txt
-
-# Run Python script (on your computer)
-python app.py
-
-# Stop MySQL
-docker-compose down
-```
-
-### What You'll Learn:
-
-✅ How **port binding** works (`-p 3306:3306`)  
-✅ Why Python uses `localhost:3306` to connect  
-✅ How **Docker Compose** simplifies everything  
-✅ How **volumes** persist data  
-✅ Real-world development workflow  
-
-### Simple Architecture:
-
-```
-Your Computer (Outside)          Docker (Inside)
-┌────────────────────┐      ┌─────────────────┐
-│  Python Script      │      │  MySQL Database  │
-│  (app.py)           │──────│  Port: 3306      │
-│                    │      │                 │
-└────────────────────┘      └─────────────────┘
-         │                           ↑
-         └───────────────────────────┘
-              localhost:3306
-           (Port Binding)
-```
-
-**See `python-mysql-docker/README.md` for detailed explanation of every concept!**
 
 ---
 
