@@ -234,11 +234,53 @@ docker rm -f web                 # Force remove running container
 ```
 
 ### Port Binding (Critical!)
+
+**Why Port Binding?**
+Containers run in an isolated Docker network. Your browser/apps on your computer can't directly access them. Port binding creates a "bridge" between your computer and the container.
+
+**Think of it like this:**
+- Container is a house with address `172.17.0.2:80` (inside Docker network)
+- Your browser is outside and can't reach that address
+- Port binding `-p 8080:80` creates a door at `localhost:8080` that forwards to the container's port 80
+
+```
+Your Browser (localhost:8080)
+        ↓
+   Port Binding (-p 8080:80)
+        ↓
+Container (172.17.0.2:80)
+```
+
+**How it works:**
 ```bash
 # Format: -p HOST_PORT:CONTAINER_PORT
+docker run -d -p 8080:80 --name web nginx
+
+# What happens:
+# 1. Container runs nginx on port 80 (inside Docker network)
+# 2. Docker maps your computer's port 8080 to container's port 80
+# 3. You access localhost:8080 in browser
+# 4. Docker forwards request to container's port 80
+# 5. Container responds back through the same path
+```
+
+**Examples:**
+```bash
 docker run -d -p 8080:80 --name web nginx     # Access via localhost:8080
 docker run -d -p 3000:3000 --name app node    # Port 3000 to 3000
 docker run -d -p 80:80 --name site nginx      # Port 80 to 80
+```
+
+**Without port binding:**
+```bash
+docker run -d --name web nginx               # ❌ Can't access from browser!
+# Container runs but isolated in Docker network
+```
+
+**With port binding:**
+```bash
+docker run -d -p 8080:80 --name web nginx    # ✅ Access at localhost:8080
+# Bridge created between your computer and container
 ```
 
 ### Flags You'll Use Daily
@@ -572,28 +614,260 @@ sudo docker ps
 
 ## 🔄 Docker Compose (Multi-Container Apps)
 
+### The Problem: Running Multiple Containers Manually
+
+**Imagine you have a Node.js app that needs MongoDB and Mongo Express:**
+
+```bash
+# Step 1: Create network (MANUAL!)
+docker network create mongo-network
+
+# Step 2: Run MongoDB
+docker run -d \
+  -p 27017:27017 \
+  --network mongo-network \
+  --name mongo \
+  -e MONGO_INITDB_ROOT_USERNAME=admin \
+  -e MONGO_INITDB_ROOT_PASSWORD=password \
+  mongo
+
+# Step 3: Run Mongo Express
+docker run -d \
+  -p 8081:8081 \
+  --network mongo-network \
+  --name mongo-express \
+  -e ME_CONFIG_MONGODB_ADMINUSERNAME=admin \
+  -e ME_CONFIG_MONGODB_ADMINPASSWORD=password \
+  -e ME_CONFIG_MONGODB_SERVER=mongo \
+  mongo-express
+
+# Step 4: Run your Node.js app
+docker run -d \
+  -p 3000:3000 \
+  --network mongo-network \
+  --name node-app \
+  -e MONGO_URL=mongodb://admin:password@mongo:27017 \
+  my-node-app
+```
+
+**Problems:**
+- Too many commands to remember
+- Easy to make mistakes
+- Hard to share with team
+- Difficult to start/stop everything together
+- **Must manually create network first!**
+
+### The Solution: Docker Compose
+
+**Docker Compose lets you define all containers in ONE file!**
+
+**✨ No need to create network manually - Docker Compose does it automatically!**
+
 **docker-compose.yml:**
 ```yaml
 version: '3.8'
+
 services:
-  web:
-    image: nginx
+  # MongoDB Database
+  mongo:
+    image: mongo
     ports:
-      - "8080:80"
-  
-  db:
-    image: postgres
+      - "27017:27017"
     environment:
-      POSTGRES_PASSWORD: secret
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
+    volumes:
+      - mongo-data:/data/db
+
+  # Mongo Express (Database UI)
+  mongo-express:
+    image: mongo-express
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: admin
+      ME_CONFIG_MONGODB_ADMINPASSWORD: password
+      ME_CONFIG_MONGODB_SERVER: mongo
+    depends_on:
+      - mongo
+
+  # Your Node.js Application
+  node-app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      MONGO_URL: mongodb://admin:password@mongo:27017/mydb
+    depends_on:
+      - mongo
+    volumes:
+      - .:/app
+      - /app/node_modules
+
+volumes:
+  mongo-data:
+
+# Network is created automatically by Docker Compose!
+# All services are connected to the same network by default
+networks:
+  default:
+    name: mongo-network
 ```
 
-**Commands:**
-```bash
-docker-compose up -d             # Start all services
-docker-compose ps                # Check status
-docker-compose logs -f           # View logs
-docker-compose down              # Stop & remove all
+### How Containers Connect in Docker Network
+
+**Inside Docker Network:**
 ```
+┌─────────────────────────────────────────┐
+│         Docker Network                  │
+│                                         │
+│  ┌──────────┐      ┌──────────────┐   │
+│  │  mongo   │◄─────│  node-app    │   │
+│  │  :27017  │      │  :3000       │   │
+│  └──────────┘      └──────────────┘   │
+│       ▲                                │
+│       │                                │
+│  ┌────┴─────────┐                     │
+│  │ mongo-express│                     │
+│  │    :8081     │                     │
+│  └──────────────┘                     │
+└─────────────────────────────────────────┘
+         │              │
+         │              │
+    Port Binding   Port Binding
+         │              │
+         ▼              ▼
+   localhost:8081  localhost:3000
+   (Your Browser)  (Your Browser)
+```
+
+**How Node.js App Connects to MongoDB:**
+
+```javascript
+// In your Node.js app
+const mongoose = require('mongoose');
+
+// Use container name 'mongo' instead of 'localhost'
+// Docker network resolves 'mongo' to the MongoDB container's IP
+const mongoURL = 'mongodb://admin:password@mongo:27017/mydb';
+
+mongoose.connect(mongoURL)
+  .then(() => console.log('Connected to MongoDB!'))
+  .catch(err => console.error('Connection failed:', err));
+```
+
+**Why use 'mongo' instead of 'localhost'?**
+- Inside Docker network, containers use **container names** to find each other
+- `mongo` = MongoDB container
+- `mongo-express` = Mongo Express container
+- Docker's internal DNS resolves these names to container IPs
+
+**From outside (your browser):**
+- Access Mongo Express: `http://localhost:8081`
+- Access Node.js app: `http://localhost:3000`
+- Port binding makes them accessible from your computer
+
+### Docker Compose Commands
+
+```bash
+# Start all services (creates network automatically!)
+docker-compose up -d
+
+# View running services
+docker-compose ps
+
+# View logs from all services
+docker-compose logs -f
+
+# View logs from specific service
+docker-compose logs -f node-app
+
+# Stop all services
+docker-compose down
+
+# Stop and remove volumes (deletes data)
+docker-compose down -v
+
+# Rebuild and start
+docker-compose up -d --build
+```
+
+**What happens when you run `docker-compose up`:**
+1. ✅ Creates network automatically (no `docker network create` needed!)
+2. ✅ Pulls/builds all images
+3. ✅ Creates volumes
+4. ✅ Starts containers in correct order (based on `depends_on`)
+5. ✅ Connects all containers to the same network
+
+### Benefits of Docker Compose
+
+✅ **One command** to start everything: `docker-compose up -d`
+✅ **Automatic networking** - containers can talk to each other
+✅ **Easy to share** - just share the `docker-compose.yml` file
+✅ **Version control** - track changes in git
+✅ **Environment variables** - manage configs easily
+✅ **Dependencies** - `depends_on` ensures correct startup order
+✅ **Volumes** - persist data even after containers stop
+
+### Complete Example: Node.js + MongoDB + Mongo Express
+
+**Project Structure:**
+```
+my-project/
+├── docker-compose.yml
+├── Dockerfile
+├── package.json
+├── server.js
+└── .dockerignore
+```
+
+**Dockerfile:**
+```dockerfile
+FROM node:18-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+EXPOSE 3000
+CMD ["npm", "start"]
+```
+
+**server.js:**
+```javascript
+const express = require('express');
+const mongoose = require('mongoose');
+
+const app = express();
+
+// Connect to MongoDB using container name
+mongoose.connect(process.env.MONGO_URL)
+  .then(() => console.log('Connected to MongoDB'))
+  .catch(err => console.error('MongoDB connection error:', err));
+
+app.get('/', (req, res) => {
+  res.send('Hello from Node.js + Docker!');
+});
+
+app.listen(3000, () => {
+  console.log('Server running on port 3000');
+});
+```
+
+**Start everything:**
+```bash
+docker-compose up -d
+```
+
+**Access:**
+- Node.js app: http://localhost:3000
+- Mongo Express: http://localhost:8081 (admin/pass)
+
+**Stop everything:**
+```bash
+docker-compose down
+```
+
+**That's it! No manual network creation, no long docker run commands!** 🎉
 
 ---
 
